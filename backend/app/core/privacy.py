@@ -1,45 +1,39 @@
 import re
-import logging
 from typing import Dict, Tuple
 
-logger = logging.getLogger(__name__)
-
-class PrivacyShield:
+class PrivacyManager:
     def __init__(self):
-        # Regex patterns for common PII
+        # Basic patterns for common PII
         self.patterns = {
             "EMAIL": r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+",
-            "PHONE": r"(\+\d{1,2}\s)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}",
+            "PHONE": r"\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}",
             "CREDIT_CARD": r"\b(?:\d[ -]*?){13,16}\b",
-            "SSN": r"\b\d{3}-\d{2}-\d{4}\b"
         }
 
-    def redact(self, text: str) -> Tuple[str, Dict[str, str]]:
+    def mask_pii(self, text: str) -> Tuple[str, Dict[str, str]]:
         """
-        Redacts PII from text and returns the redacted text plus a mapping for restoration.
+        Scans text for PII and replaces it with placeholders.
+        Returns the masked text and a mapping to restore it later.
         """
-        redacted_text = text
         mapping = {}
+        masked_text = text
         
         for pii_type, pattern in self.patterns.items():
-            matches = re.findall(pattern, redacted_text)
-            for i, match in enumerate(matches):
-                placeholder = f"[REDACTED_{pii_type}_{i}]"
+            matches = re.findall(pattern, masked_text)
+            for i, match in enumerate(set(matches)):
+                placeholder = f"[{pii_type}_{i}]"
                 mapping[placeholder] = match
-                redacted_text = redacted_text.replace(match, placeholder)
+                masked_text = masked_text.replace(match, placeholder)
         
-        if mapping:
-            logger.info(f"Redacted {len(mapping)} PII items from input.")
-            
-        return redacted_text, mapping
+        return masked_text, mapping
 
-    def restore(self, text: str, mapping: Dict[str, str]) -> str:
+    def unmask_pii(self, text: str, mapping: Dict[str, str]) -> str:
         """
-        Restores redacted PII in a response if the LLM happened to repeat placeholders.
+        Restores the original PII from placeholders in the text.
         """
-        restored_text = text
+        unmasked_text = text
         for placeholder, original in mapping.items():
-            restored_text = restored_text.replace(placeholder, original)
-        return restored_text
+            unmasked_text = unmasked_text.replace(placeholder, original)
+        return unmasked_text
 
-privacy_shield = PrivacyShield()
+privacy_manager = PrivacyManager()

@@ -7,6 +7,7 @@ from langchain_core.messages import HumanMessage, AIMessage
 from app.services.prompt_builder import prompt_builder
 from app.services.tools import tool_registry
 from app.core.resilience import standard_retry, llm_breaker
+from app.core.privacy import privacy_manager
 
 class AgentService:
     def __init__(self):
@@ -30,9 +31,12 @@ class AgentService:
     @standard_retry
     async def execute_stream(self, input_text: str, session_id: str, preferences: dict = {}):
         """
-        Executes the agent and yields tokens in real-time.
+        Executes the agent and yields tokens in real-time with PII protection.
         """
-        context = await prompt_builder.build_context(input_text, session_id)
+        # 1. Mask PII before sending to LLM
+        safe_input, pii_map = privacy_manager.mask_pii(input_text)
+        
+        context = await prompt_builder.build_context(safe_input, session_id)
         chat_history = memory_manager.get_history(session_id)
         chat_history = prompt_builder.prune_history(chat_history)
         
@@ -41,16 +45,18 @@ class AgentService:
         try:
             full_response = ""
             async for chunk in self.llm.astream(prompt.format_messages(
-                input=input_text, 
+                input=safe_input, 
                 chat_history=chat_history,
                 agent_scratchpad=[] 
             )):
                 content = chunk.content
-                full_response += content
-                yield content
+                # 2. Unmask PII before sending to User
+                safe_content = privacy_manager.unmask_pii(content, pii_map)
+                full_response += safe_content
+                yield safe_content
             
-            # Save to memory after stream finishes
-            memory_manager.add_message(session_id, HumanMessage(content=input_text))
+            # Save to memory after stream finishes (using safe version for privacy)
+            memory_manager.add_message(session_id, HumanMessage(content=safe_input))
             memory_manager.add_message(session_id, AIMessage(content=full_response))
             
         except Exception as e:
@@ -58,10 +64,11 @@ class AgentService:
 
     async def execute_internal(self, input_text: str, session_id: str) -> str:
         """
-        Executes the agent and returns the full result as a string.
-        Used internally by the orchestrator.
+        Executes the agent and returns the full result as a string with PII protection.
         """
-        context = await prompt_builder.build_context(input_text, session_id)
+        safe_input, pii_map = privacy_manager.mask_pii(input_text)
+        
+        context = await prompt_builder.build_context(safe_input, session_id)
         chat_history = memory_manager.get_history(session_id)
         chat_history = prompt_builder.prune_history(chat_history)
         
@@ -71,10 +78,10 @@ class AgentService:
         
         try:
             response = await executor.ainvoke({
-                "input": input_text,
+                "input": safe_input,
                 "chat_history": chat_history
             })
-            return response["output"]
+            return privacy_manager.unmask_pii(response["output"], pii_map)
         except Exception as e:
             return f"Error: {str(e)}"
 

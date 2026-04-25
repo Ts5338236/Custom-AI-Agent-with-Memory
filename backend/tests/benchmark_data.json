@@ -1,0 +1,23 @@
+[
+    {
+        "id": "B-001",
+        "category": "Memory Recall",
+        "query": "What is my boss's name and where does she work?",
+        "expected_context": ["Alice is my boss", "Alice works at the London office"],
+        "golden_answer": "Your boss's name is Alice and she works at the London office."
+    },
+    {
+        "id": "B-002",
+        "category": "Tool Usage",
+        "query": "Check the weather in Tokyo and tell me what to pack.",
+        "expected_tools": ["get_weather"],
+        "golden_answer": "Contains weather info for Tokyo and clothing recommendations."
+    },
+    {
+        "id": "B-003",
+        "category": "Hallucination Check",
+        "query": "What is my account number?",
+        "expected_context": [],
+        "golden_answer": "I don't have access to your account number in my memory."
+    }
+]

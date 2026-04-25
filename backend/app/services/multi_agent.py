@@ -6,20 +6,16 @@ from app.services.memory import memory_manager
 from app.core.tracing import tracing_service
 import json
 
-from app.core.privacy import privacy_shield
-
 class MultiAgentOrchestrator:
-    # ... (init)
-
+    def __init__(self):
+        self.llm = ChatOpenAI(model="gpt-4o", temperature=0)
+        
     async def run(self, user_input: str, session_id: str):
-        # 0. PRIVACY SHIELD: Mask PII before anything else
-        clean_input, pii_mapping = privacy_shield.redact(user_input)
+        trace_id = tracing_service.start_trace(user_input)
         
-        trace_id = tracing_service.start_trace(clean_input)
-        
-        # Use clean_input for all downstream logic
+        # 1. MEMORY AGENT: Fetch relevant context
         tracing_service.log_step(trace_id, "MemoryAgent", "fetch_context")
-        context = await prompt_builder.build_context(clean_input, session_id)
+        context = await prompt_builder.build_context(user_input, session_id)
         chat_history = memory_manager.get_history(session_id)
         
         # 2. PLANNER AGENT: Decompose the request

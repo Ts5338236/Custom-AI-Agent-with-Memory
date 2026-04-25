@@ -85,6 +85,30 @@ def extract_text_from_image(image_url: str) -> str:
     # Mock integration with AWS Textract or Google Vision API
     return "Extracted text: [INVOICE] Date: 2026-04-25. Total Amount: $150.00. Vendor: Acme Corp."
 
+@tool
+async def analyze_image(image_url: str, prompt: str = "Describe this image in detail.") -> str:
+    """
+    Uses AI Vision to analyze and describe an image from a URL.
+    Use this when the user provides an image or asks a question about a visual asset.
+    """
+    # This uses a separate instance of the LLM configured for Vision
+    vision_model = ChatOpenAI(model="gpt-4o", max_tokens=500)
+    
+    from langchain_core.messages import HumanMessage
+    
+    message = HumanMessage(
+        content=[
+            {"type": "text", "text": prompt},
+            {
+                "type": "image_url",
+                "image_url": {"url": image_url},
+            },
+        ],
+    )
+    
+    response = await vision_model.ainvoke([message])
+    return response.content
+
 class ToolRegistry:
     def __init__(self):
         # Register all tools here
@@ -97,7 +121,8 @@ class ToolRegistry:
             send_email,
             manage_calendar,
             process_payment,
-            extract_text_from_image
+            extract_text_from_image,
+            analyze_image # Added Vision
         ]
 
     def get_all_tools(self):

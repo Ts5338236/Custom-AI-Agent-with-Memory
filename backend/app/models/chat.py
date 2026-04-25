@@ -36,5 +36,19 @@ class ChatMessage(Base):
     content = Column(Text)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
-    # Relationships
-    session = relationship("ChatSession", back_populates="messages")
+class UserNode(Base):
+    __tablename__ = "user_nodes"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    label = Column(String) # e.g., "Person", "Project", "Skill"
+    name = Column(String, index=True) # e.g., "John", "Project Alpha", "Python"
+    properties = Column(JSON, default={})
+
+class UserEdge(Base):
+    __tablename__ = "user_edges"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    source_id = Column(Integer, ForeignKey("user_nodes.id"))
+    target_id = Column(Integer, ForeignKey("user_nodes.id"))
+    relationship = Column(String) # e.g., "WORKS_FOR", "FAVORITE", "LEARNING"
+    strength = Column(Integer, default=1)
