@@ -49,6 +49,42 @@ async def save_to_long_term_memory(text: str) -> str:
     result = await intel_memory_manager.process_and_save(text)
     return f"Information processed: {result}"
 
+@tool
+def send_email(recipient: str, subject: str, body: str) -> str:
+    """
+    Sends an email to a specific recipient. 
+    Use this for notifications, summaries, or direct communication.
+    """
+    # Mock integration with SendGrid/AWS SES
+    return f"Email successfully sent to {recipient} with subject: {subject}."
+
+@tool
+def manage_calendar(action: str, details: str) -> str:
+    """
+    Manages user calendar events. Action can be 'create', 'list', or 'delete'.
+    Details should include date/time and event description.
+    """
+    # Mock integration with Google Calendar API
+    return f"Calendar event '{details}' successfully processed with action: {action}."
+
+@tool
+def process_payment(amount: float, currency: str, description: str) -> str:
+    """
+    Processes a financial transaction. Use this for payments or invoices.
+    """
+    # Mock integration with Stripe API
+    transaction_id = "txn_" + "".join([str(i) for i in range(5)])
+    return f"Payment of {amount} {currency} for '{description}' processed. ID: {transaction_id}"
+
+@tool
+def extract_text_from_image(image_url: str) -> str:
+    """
+    Performs OCR (Optical Character Recognition) on an image URL.
+    Use this when the user provides an image or document for analysis.
+    """
+    # Mock integration with AWS Textract or Google Vision API
+    return "Extracted text: [INVOICE] Date: 2026-04-25. Total Amount: $150.00. Vendor: Acme Corp."
+
 class ToolRegistry:
     def __init__(self):
         # Register all tools here
@@ -57,7 +93,11 @@ class ToolRegistry:
             get_weather,
             google_search,
             search_long_term_memory,
-            save_to_long_term_memory
+            save_to_long_term_memory,
+            send_email,
+            manage_calendar,
+            process_payment,
+            extract_text_from_image
         ]
 
     def get_all_tools(self):

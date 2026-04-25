@@ -31,6 +31,7 @@ if settings.BACKEND_CORS_ORIGINS:
     )
 
 app.include_router(chat.router, prefix=f"{settings.API_V1_STR}/chat", tags=["chat"])
+app.include_router(admin.router, prefix=f"{settings.API_V1_STR}/admin", tags=["admin"])
 
 @app.get("/")
 def root():

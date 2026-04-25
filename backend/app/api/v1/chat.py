@@ -10,28 +10,28 @@ router = APIRouter()
 
 from app.services.multi_agent import multi_agent_orchestrator
 
-@router.post("/", response_model=ChatResponse)
+from fastapi.responses import StreamingResponse
+from app.services.cache import response_cache
+import json
+
+@router.post("/stream")
 @limiter.limit("10/minute")
-async def chat(request_obj: Request, request: ChatRequest, db: Session = Depends(get_db)):
-    try:
-        # ... (session logging omitted for brevity) ...
+async def chat_stream(request_obj: Request, request: ChatRequest, db: Session = Depends(get_db)):
+    # 1. Check Cache
+    cached_response = response_cache.get(request.message, request.session_id)
+    if cached_response:
+        async def generate_cached():
+            yield cached_response
+        return StreamingResponse(generate_cached(), media_type="text/event-stream")
+
+    # 2. Execute Stream
+    async def event_generator():
+        full_response = ""
+        async for token in agent_service.execute_stream(request.message, request.session_id):
+            full_response += token
+            yield f"data: {json.dumps({'token': token})}\n\n"
         
-        # 2. Execute via Multi-Agent Orchestrator
-        response_text = await multi_agent_orchestrator.run(
-            user_input=request.message,
-            session_id=request.session_id
-        )
+        # Cache the full response
+        response_cache.set(request.message, request.session_id, full_response)
 
-        # 3. Log to Database persistently
-        user_msg = ChatMessage(session_id=request.session_id, role="user", content=request.message)
-        assistant_msg = ChatMessage(session_id=request.session_id, role="assistant", content=response_text)
-        db.add(user_msg)
-        db.add(assistant_msg)
-        db.commit()
-
-        return ChatResponse(
-            response=response_text,
-            session_id=request.session_id
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
